@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore'
+import { db } from './firebase'
 import './App.css'
 
 function App() {
-  const [guests, setGuests] = useState(() => {
-    const savedGuests = localStorage.getItem('weddingGuests');
-    return savedGuests ? JSON.parse(savedGuests) : [];
-  });
-
+  const [guests, setGuests] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     attendance: 'ceremonia',
@@ -19,8 +17,17 @@ function App() {
   const [editData, setEditData] = useState({});
 
   useEffect(() => {
-    localStorage.setItem('weddingGuests', JSON.stringify(guests));
-  }, [guests]);
+    // Sincronización en tiempo real con Firebase
+    const unsubscribe = onSnapshot(collection(db, 'guests'), (snapshot) => {
+      const guestsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setGuests(guestsData);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -30,17 +37,17 @@ function App() {
     setEditData({ ...editData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    const newGuest = {
-      id: Date.now(),
-      ...formData
-    };
-
-    setGuests([...guests, newGuest]);
-    setFormData({ name: '', attendance: 'ceremonia', menu: 'adulto', payment: 'pendiente' });
+    try {
+      await addDoc(collection(db, 'guests'), formData);
+      setFormData({ name: '', attendance: 'ceremonia', menu: 'adulto', payment: 'pendiente' });
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      alert("Hubo un error al guardar el invitado.");
+    }
   };
 
   const startEditing = (guest) => {
@@ -48,18 +55,30 @@ function App() {
     setEditData(guest);
   };
 
-  const saveEdit = () => {
-    setGuests(guests.map(g => g.id === editingId ? editData : g));
-    setEditingId(null);
+  const saveEdit = async () => {
+    try {
+      const guestRef = doc(db, 'guests', editingId);
+      // Remove id from editData before saving
+      const { id, ...dataToSave } = editData;
+      await updateDoc(guestRef, dataToSave);
+      setEditingId(null);
+    } catch (error) {
+      console.error("Error updating document: ", error);
+      alert("Hubo un error al actualizar el invitado.");
+    }
   };
 
   const cancelEdit = () => {
     setEditingId(null);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('¿Seguro que deseas eliminar este invitado?')) {
-      setGuests(guests.filter(guest => guest.id !== id));
+      try {
+        await deleteDoc(doc(db, 'guests', id));
+      } catch (error) {
+        console.error("Error deleting document: ", error);
+      }
     }
   };
 
@@ -68,7 +87,6 @@ function App() {
   const kidsMenu = guests.filter(g => g.menu === 'kids').length;
   const paidCards = guests.filter(g => g.payment === 'abonado').length;
 
-  // Data for the Pie Chart
   const pieData = [
     { name: 'Abonado', value: paidCards },
     { name: 'Pendiente', value: totalGuests - paidCards }
@@ -79,7 +97,7 @@ function App() {
     <div className="app-container">
       <header className="header">
         <h1><span>Nuestra</span> Boda</h1>
-        <p>Gestión de Invitados</p>
+        <p>Gestión de Invitados (Nube)</p>
       </header>
 
       <div className="dashboard-grid">
