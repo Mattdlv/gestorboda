@@ -1,0 +1,175 @@
+/* Dashboard.css - Estilo Boho Chic / Neumórfico */
+
+.dashboard-wrapper {
+  animation: fade-in-slow 1.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  opacity: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  margin-bottom: 2rem;
+}
+
+/* Header de Bienvenida */
+.welcome-header {
+  text-align: center;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.welcome-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 3.2rem;
+  color: var(--text-main);
+  font-weight: 400;
+  margin-bottom: 0.2rem;
+}
+
+.welcome-header p {
+  font-family: 'Lato', sans-serif;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+}
+
+.subtitle-top {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  display: block;
+}
+
+/* Layout del Panel Principal */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Contenedores Neumórficos */
+.therapeutic-panel {
+  background: var(--surface-color);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: var(--radius-md); 
+  padding: 3rem 2.5rem;
+  box-shadow: var(--shadow-neumorphic); 
+  transition: all 0.5s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Detalles decorativos en esquinas */
+.therapeutic-panel::before, .therapeutic-panel::after {
+  content: '✿';
+  position: absolute;
+  color: var(--accent-terracota);
+  opacity: 0.08;
+  font-size: 5rem;
+  font-family: serif;
+}
+.therapeutic-panel::before { top: -20px; left: -20px; }
+.therapeutic-panel::after { bottom: -20px; right: -20px; }
+
+/* Para el gráfico, que en tu imagen tiene un borde dorado fino */
+.therapeutic-panel.border-gold {
+  border: 1px solid var(--border-gold);
+}
+
+.panel-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem;
+  font-weight: 400;
+  color: var(--text-main);
+  margin-bottom: 2.5rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* Tarjetas de Resumen */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  flex-grow: 1;
+  z-index: 1;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+}
+
+.stat-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 3.2rem;
+  font-weight: 400;
+  color: var(--text-main);
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* Decoradores centrales entre números (como en la imagen) */
+.stat-card.icon-center {
+  grid-column: span 2;
+  font-size: 2rem;
+  color: var(--accent-terracota);
+  opacity: 0.6;
+  margin: -1rem 0;
+}
+
+/* Gráfico */
+.chart-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+  min-height: 300px;
+  z-index: 1;
+}
+
+.empty-state {
+  font-family: 'Lato', sans-serif;
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+/* Animaciones */
+@keyframes fade-in-slow {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
