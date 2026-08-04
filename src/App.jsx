@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react'
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore'
-import { db } from './firebase'
-import './App.css'
+import { useState, useEffect } from 'react';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { db } from './firebase';
+import Dashboard, { calculateCost, getAmountPaid } from './components/Dashboard';
+import './App.css';
 
 function App() {
   const [guests, setGuests] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
-    attendance: 'ceremonia',
+    attendance: 'fiesta', 
     menu: 'adulto',
-    payment: 'pendiente'
+    amountPaid: ''
   });
 
   const [editingId, setEditingId] = useState(null);
@@ -30,7 +30,8 @@ function App() {
   }, []);
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleEditChange = (e) => {
@@ -41,30 +42,54 @@ function App() {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
+    const finalData = { ...formData };
+    
+    // Convertir el monto a número
+    finalData.amountPaid = Number(finalData.amountPaid) || 0;
+
+    if (finalData.attendance === 'ceremonia') {
+      finalData.menu = 'no_aplica';
+      finalData.amountPaid = 0;
+    }
+
     try {
-      await addDoc(collection(db, 'guests'), formData);
-      setFormData({ name: '', attendance: 'ceremonia', menu: 'adulto', payment: 'pendiente' });
+      await addDoc(collection(db, 'guests'), finalData);
+      setFormData({ name: '', attendance: 'fiesta', menu: 'adulto', amountPaid: '' });
     } catch (error) {
-      console.error("Error adding document: ", error);
-      alert("Hubo un error al guardar el invitado.");
+      console.error("Error al registrar invitado: ", error);
+      alert("Hubo un inconveniente al guardar el invitado.");
     }
   };
 
   const startEditing = (guest) => {
     setEditingId(guest.id);
-    setEditData(guest);
+    
+    // Asegurar que editData tenga amountPaid poblado para compatibilidad hacia atrás
+    const safeGuestData = { 
+      ...guest, 
+      amountPaid: getAmountPaid(guest) 
+    };
+    setEditData(safeGuestData);
   };
 
   const saveEdit = async () => {
     try {
       const guestRef = doc(db, 'guests', editingId);
-      // Remove id from editData before saving
       const { id, ...dataToSave } = editData;
+      
+      dataToSave.amountPaid = Number(dataToSave.amountPaid) || 0;
+
+      if (dataToSave.attendance === 'ceremonia') {
+        dataToSave.menu = 'no_aplica';
+        dataToSave.amountPaid = 0;
+      } else {
+        if (dataToSave.menu === 'no_aplica') dataToSave.menu = 'adulto';
+      }
+
       await updateDoc(guestRef, dataToSave);
       setEditingId(null);
     } catch (error) {
-      console.error("Error updating document: ", error);
-      alert("Hubo un error al actualizar el invitado.");
+      console.error("Error al actualizar: ", error);
     }
   };
 
@@ -73,149 +98,103 @@ function App() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('¿Seguro que deseas eliminar este invitado?')) {
+    if (window.confirm('¿Deseas retirar a este invitado de la lista?')) {
       try {
         await deleteDoc(doc(db, 'guests', id));
       } catch (error) {
-        console.error("Error deleting document: ", error);
+        console.error("Error al retirar: ", error);
       }
     }
   };
 
-  const totalGuests = guests.length;
-  const partyGuests = guests.filter(g => g.attendance === 'fiesta').length;
-  const kidsMenu = guests.filter(g => g.menu === 'kids').length;
-  const paidCards = guests.filter(g => g.payment === 'abonado').length;
-
-  const pieData = [
-    { name: 'Abonado', value: paidCards },
-    { name: 'Pendiente', value: totalGuests - paidCards }
-  ];
-  const COLORS = ['#10b981', '#ef4444'];
+  const getMenuLabel = (menuValue) => {
+    if (menuValue === 'adulto') return 'Adulto ($65.000)';
+    if (menuValue === 'celiaco') return 'Adulto Celíaco ($65.000)';
+    if (menuValue === 'kids') return 'Infantil ($45.000)';
+    return '-';
+  };
 
   return (
     <div className="app-container">
-      <header className="header">
-        <h1><span>Nuestra</span> Boda</h1>
-        <p>Gestión de Invitados (Nube)</p>
-      </header>
-
-      <div className="dashboard-grid">
-        <section className="premium-panel">
-          <h2>Resumen</h2>
-          <div className="stats-container">
-            <div className="stat-card">
-              <div className="stat-value">{totalGuests}</div>
-              <div className="stat-label">Total</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{partyGuests}</div>
-              <div className="stat-label">Fiesta</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{kidsMenu}</div>
-              <div className="stat-label">Niños</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{paidCards}</div>
-              <div className="stat-label">Abonados</div>
-            </div>
-          </div>
-        </section>
-
-        <section className="premium-panel">
-          <h2>Estado de Pagos</h2>
-          <div className="chart-container">
-            {totalGuests === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>Agrega invitados para ver las estadísticas.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend verticalAlign="bottom" height={36} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </section>
-      </div>
+      <Dashboard guests={guests} />
 
       <section className="premium-panel">
-        <h2>Agregar Invitado</h2>
+        <h2>Sumar a la Celebración</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-grid">
             <div className="input-group">
-              <label>Nombre y Apellido</label>
+              <label>Nombre del Invitado</label>
               <input 
                 type="text" 
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                placeholder="Ej. Juan Pérez"
+                placeholder="Ej. Familia Pérez"
                 required
               />
             </div>
             
             <div className="input-group">
-              <label>Asistencia</label>
+              <label>Presencia</label>
               <select name="attendance" value={formData.attendance} onChange={handleInputChange}>
-                <option value="ceremonia">Solo Ceremonia</option>
                 <option value="fiesta">Ceremonia y Fiesta</option>
+                <option value="ceremonia">Solo Ceremonia</option>
               </select>
             </div>
 
-            <div className="input-group">
-              <label>Menú</label>
-              <select name="menu" value={formData.menu} onChange={handleInputChange}>
-                <option value="adulto">Adulto</option>
-                <option value="kids">Kids</option>
-              </select>
-            </div>
+            {formData.attendance === 'fiesta' && (
+              <>
+                <div className="input-group">
+                  <label>Menú</label>
+                  <select name="menu" value={formData.menu} onChange={handleInputChange}>
+                    <option value="adulto">Adulto ($65.000)</option>
+                    <option value="celiaco">Adulto Celíaco ($65.000)</option>
+                    <option value="kids">Infantil ($45.000)</option>
+                  </select>
+                </div>
 
-            <div className="input-group">
-              <label>Pago</label>
-              <select name="payment" value={formData.payment} onChange={handleInputChange}>
-                <option value="pendiente">Pendiente</option>
-                <option value="abonado">Abonado</option>
-              </select>
-            </div>
+                <div className="input-group">
+                  <label>Transferido (ARS)</label>
+                  <input 
+                    type="number" 
+                    name="amountPaid"
+                    value={formData.amountPaid}
+                    onChange={handleInputChange}
+                    placeholder="Ej. 30000"
+                    min="0"
+                  />
+                </div>
+              </>
+            )}
           </div>
           
-          <button type="submit" className="btn-primary">Añadir a la Lista</button>
+          <button type="submit" className="btn-primary">Registrar Invitado</button>
         </form>
       </section>
 
       <section className="premium-panel">
-        <h2>Lista de Invitados</h2>
+        <h2>Nuestra Lista</h2>
         {guests.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No hay invitados registrados todavía.</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>El inicio de una gran fiesta. Añade a tu primer invitado.</p>
         ) : (
           <div className="table-container">
             <table>
               <thead>
                 <tr>
                   <th>Nombre</th>
-                  <th>Asistencia</th>
+                  <th>Presencia</th>
                   <th>Menú</th>
-                  <th>Estado Pago</th>
-                  <th>Acciones</th>
+                  <th>Progreso de Pago</th>
+                  <th>Ajustes</th>
                 </tr>
               </thead>
               <tbody>
-                {guests.map((guest) => (
+                {guests.map((guest) => {
+                  const cost = calculateCost(guest.menu, guest.attendance);
+                  const paid = getAmountPaid(guest);
+                  const isReady = paid >= cost && guest.attendance === 'fiesta';
+                  
+                  return (
                   <tr key={guest.id}>
                     {editingId === guest.id ? (
                       <>
@@ -224,26 +203,43 @@ function App() {
                         </td>
                         <td>
                           <select name="attendance" value={editData.attendance} onChange={handleEditChange} className="inline-select">
-                            <option value="ceremonia">Solo Ceremonia</option>
                             <option value="fiesta">Ceremonia + Fiesta</option>
+                            <option value="ceremonia">Solo Ceremonia</option>
                           </select>
                         </td>
-                        <td>
-                          <select name="menu" value={editData.menu} onChange={handleEditChange} className="inline-select">
-                            <option value="adulto">Adulto</option>
-                            <option value="kids">Kids</option>
-                          </select>
-                        </td>
-                        <td>
-                          <select name="payment" value={editData.payment} onChange={handleEditChange} className="inline-select">
-                            <option value="pendiente">Pendiente</option>
-                            <option value="abonado">Abonado</option>
-                          </select>
-                        </td>
+                        
+                        {editData.attendance === 'fiesta' ? (
+                          <>
+                            <td>
+                              <select name="menu" value={editData.menu === 'no_aplica' ? 'adulto' : editData.menu} onChange={handleEditChange} className="inline-select">
+                                <option value="adulto">Adulto</option>
+                                <option value="celiaco">Adulto Celíaco</option>
+                                <option value="kids">Infantil</option>
+                              </select>
+                            </td>
+                            <td>
+                              <input 
+                                type="number" 
+                                name="amountPaid" 
+                                value={editData.amountPaid} 
+                                onChange={handleEditChange} 
+                                className="inline-input" 
+                                placeholder="ARS" 
+                                min="0"
+                              />
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td><span style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>-</span></td>
+                            <td><span style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>-</span></td>
+                          </>
+                        )}
+                        
                         <td>
                           <div className="action-buttons">
-                            <button className="btn-action btn-save" onClick={saveEdit}>Guardar</button>
-                            <button className="btn-action btn-delete" onClick={cancelEdit}>Cancelar</button>
+                            <button className="btn-action btn-save" onClick={saveEdit}>Listo</button>
+                            <button className="btn-action btn-delete" onClick={cancelEdit}>Volver</button>
                           </div>
                         </td>
                       </>
@@ -253,30 +249,38 @@ function App() {
                         <td>
                           <div className="status-indicator">
                             <span className={`dot ${guest.attendance === 'ceremonia' ? 'gray' : 'gold'}`}></span>
-                            {guest.attendance === 'ceremonia' ? 'Solo Ceremonia' : 'Ceremonia + Fiesta'}
+                            {guest.attendance === 'ceremonia' ? 'Ceremonia' : 'Completa'}
                           </div>
                         </td>
                         <td>
-                          <div className="status-indicator">
-                            {guest.menu === 'adulto' ? 'Adulto' : 'Niños (Kids)'}
-                          </div>
+                          {guest.attendance === 'fiesta' ? (
+                            <div className="status-indicator">
+                              {getMenuLabel(guest.menu)}
+                            </div>
+                          ) : (
+                            <span style={{color: '#a1a1a1', fontSize: '0.9rem'}}>-</span>
+                          )}
                         </td>
                         <td>
-                          <div className="status-indicator">
-                            <span className={`dot ${guest.payment === 'abonado' ? 'green' : 'red'}`}></span>
-                            {guest.payment === 'abonado' ? 'Abonado' : 'Pendiente'}
-                          </div>
+                          {guest.attendance === 'fiesta' ? (
+                            <div className="status-indicator">
+                              <span className={`dot ${isReady ? 'green' : 'red'}`}></span>
+                              {isReady ? 'Lugar Listo' : `$${paid.toLocaleString('es-AR')} de $${cost.toLocaleString('es-AR')}`}
+                            </div>
+                          ) : (
+                            <span style={{color: '#a1a1a1', fontSize: '0.9rem'}}>-</span>
+                          )}
                         </td>
                         <td>
                           <div className="action-buttons">
-                            <button className="btn-action btn-edit" onClick={() => startEditing(guest)}>Editar</button>
-                            <button className="btn-action btn-delete" onClick={() => handleDelete(guest.id)}>Eliminar</button>
+                            <button className="btn-action btn-edit" onClick={() => startEditing(guest)}>Ajustar</button>
+                            <button className="btn-action btn-delete" onClick={() => handleDelete(guest.id)}>Retirar</button>
                           </div>
                         </td>
                       </>
                     )}
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>
