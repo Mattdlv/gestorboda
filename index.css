@@ -1,0 +1,262 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+:root {
+  /* Paleta Boho Chic */
+  --bg-color: #F8F6F0; /* Crema/Hueso cálido */
+  --surface-color: #F8F6F0; /* Igual al fondo para efecto neumórfico */
+  --text-main: #2C3531; /* Gris súper oscuro / verde musgo oscuro */
+  --text-muted: #5F675A;
+  
+  --accent-sage: #8A9A86; /* Verde salvia */
+  --accent-terracota: #C49A76; /* Terracota / Bronce */
+  
+  --border-gold: rgba(196, 154, 118, 0.4);
+  
+  /* Sombras Neumórficas */
+  --shadow-neumorphic: 
+    -10px -10px 20px rgba(255,255,255,0.7),
+    10px 10px 20px rgba(0,0,0,0.04);
+  
+  --shadow-neumorphic-hover: 
+    -12px -12px 24px rgba(255,255,255,0.8),
+    12px 12px 24px rgba(0,0,0,0.06);
+
+  --shadow-inset: inset 2px 2px 5px rgba(0,0,0,0.03), inset -3px -3px 7px rgba(255,255,255, 0.6);
+  
+  --radius-md: 24px; /* Bordes más redondeados tipo tarjeta */
+  --radius-full: 9999px;
+  
+  --transition-smooth: all 0.4s ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Lato', sans-serif;
+  background-color: var(--bg-color);
+  background-image: radial-gradient(rgba(196, 154, 118, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px; /* Textura súper sutil */
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  line-height: 1.6;
+}
+
+#root {
+  width: 100%;
+  max-width: 1100px;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  gap: 3.5rem;
+}
+
+h1, h2, h3 {
+  font-family: 'Playfair Display', serif;
+  color: var(--text-main);
+  font-weight: 400;
+}
+
+/* Rediseño de Paneles para estilo Boho Neumórfico */
+.premium-panel {
+  background: var(--surface-color);
+  border: 1px solid rgba(255,255,255,0.8);
+  border-radius: var(--radius-md);
+  padding: 3.5rem 3rem;
+  box-shadow: var(--shadow-neumorphic);
+  transition: var(--transition-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Detalle floral sutil en las esquinas mediante CSS */
+.premium-panel::before, .premium-panel::after {
+  content: '✿';
+  position: absolute;
+  color: var(--accent-terracota);
+  opacity: 0.1;
+  font-size: 4rem;
+  font-family: serif;
+}
+.premium-panel::before { top: -10px; left: -10px; transform: rotate(45deg); }
+.premium-panel::after { bottom: -10px; right: -10px; transform: rotate(225deg); }
+
+.premium-panel h2 {
+  font-size: 2rem;
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+/* Form Styles Boho */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.input-group label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+}
+
+input, select {
+  padding: 1.1rem 1.2rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-gold);
+  background: rgba(255, 255, 255, 0.4);
+  font-family: 'Lato', sans-serif;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  outline: none;
+  transition: var(--transition-smooth);
+  box-shadow: var(--shadow-inset);
+}
+
+input:focus, select:focus {
+  border-color: var(--accent-sage);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(138, 154, 134, 0.1);
+}
+
+.btn-primary {
+  padding: 1.2rem 2rem;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--text-muted); /* Verde musgo oscuro */
+  color: #fff;
+  font-weight: 400;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  width: 100%;
+  font-family: 'Lato', sans-serif;
+  box-shadow: 0 4px 15px rgba(95, 103, 90, 0.3);
+}
+
+.btn-primary:hover {
+  background: var(--accent-sage);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(138, 154, 134, 0.4);
+}
+
+/* Table Styles Boho */
+.table-container {
+  overflow-x: auto;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.4);
+  padding: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+th, td {
+  padding: 1.2rem 1.2rem;
+  text-align: left;
+}
+
+th {
+  font-weight: 700;
+  color: var(--accent-terracota);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 1.5px;
+  border-bottom: 1px solid var(--border-gold);
+}
+
+tr {
+  background: rgba(255,255,255, 0.6);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+tr:hover {
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+}
+
+td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
+td:last-child { border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
+
+.guest-name {
+  font-weight: 400;
+  font-size: 1.2rem;
+  font-family: 'Playfair Display', serif;
+}
+
+/* Inline Edit Controls */
+.inline-input, .inline-select {
+  padding: 0.6rem;
+  border: 1px solid var(--accent-sage);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  width: 100%;
+  background: #fff;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.btn-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color 0.3s ease;
+  padding: 0.5rem;
+  font-family: 'Lato', sans-serif;
+}
+
+.btn-edit { color: var(--accent-terracota); }
+.btn-edit:hover { color: var(--text-main); }
+.btn-save { color: var(--accent-sage); }
+.btn-delete { color: #a1a1a1; }
+.btn-delete:hover { color: var(--text-main); }
+
+/* Status Indicators */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot.green { background-color: var(--accent-sage); }
+.dot.red { background-color: var(--accent-terracota); }
+.dot.gold { background-color: #D4AF37; }
+.dot.gray { background-color: #d1d5db; }
