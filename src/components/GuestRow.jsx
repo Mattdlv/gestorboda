@@ -1,16 +1,35 @@
 import React, { useState } from 'react';
-import { calculateCost, getAmountPaid, MENU_PRICES } from '../utils/constants';
+import PaymentStatusBadge from './finance/PaymentStatusBadge';
+import PaymentProgress from './finance/PaymentProgress';
+import { getGuestFinance } from '../utils/finance';
+import { formatARS } from '../utils/format';
 
-export default function GuestRow({ guest, onUpdate, onDelete }) {
+// Campos que se editan desde "Ajustar". Los pagos se gestionan desde "Pagos".
+const EDITABLE_FIELDS = ['name', 'grupo', 'attendance', 'menu', 'mesa'];
+
+export default function GuestRow({ guest, settings, onUpdate, onDelete, onOpenPayments }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
-  const [localMesa, setLocalMesa] = useState(guest.mesa || 'Sin asignar');
+  const remoteMesa = guest.mesa || 'Sin asignar';
+  const [localMesa, setLocalMesa] = useState(remoteMesa);
+  const [syncedMesa, setSyncedMesa] = useState(remoteMesa);
+
+  // Si la mesa cambia en la base (otro dispositivo, refresh), actualizar el input
+  if (remoteMesa !== syncedMesa) {
+    setSyncedMesa(remoteMesa);
+    setLocalMesa(remoteMesa);
+  }
+
+  const notifyError = () => alert('No se pudo guardar el cambio. Revisá la conexión e intentá de nuevo.');
+
+  const finance = getGuestFinance(guest, settings);
 
   const startEditing = () => {
     setIsEditing(true);
-    setEditData({ 
-      ...guest, 
-      amountPaid: getAmountPaid(guest),
+    setEditData({
+      name: guest.name || '',
+      attendance: guest.attendance === 'ceremonia' ? 'ceremonia' : 'fiesta',
+      menu: guest.menu === 'no_aplica' || !guest.menu ? 'adulto' : guest.menu,
       grupo: guest.grupo || 'Familia',
       mesa: guest.mesa || 'Sin asignar'
     });
@@ -21,19 +40,23 @@ export default function GuestRow({ guest, onUpdate, onDelete }) {
   };
 
   const saveEdit = () => {
-    const dataToSave = { ...editData };
-    dataToSave.amountPaid = Number(dataToSave.amountPaid) || 0;
+    if (!editData.name.trim()) return;
+    const dataToSave = Object.fromEntries(EDITABLE_FIELDS.map((f) => [f, editData[f]]));
+    dataToSave.name = dataToSave.name.trim();
 
     if (!dataToSave.mesa.trim()) dataToSave.mesa = 'Sin asignar';
 
     if (dataToSave.attendance === 'ceremonia') {
       dataToSave.menu = 'no_aplica';
-      dataToSave.amountPaid = 0;
-    } else {
-      if (dataToSave.menu === 'no_aplica') dataToSave.menu = 'adulto';
+      // Los pagos se conservan: no se borra historial al pasar a ceremonia
+      if (finance.paid > 0 && guest.attendance !== 'ceremonia' && !window.confirm(
+        `${guest.name} tiene ${formatARS(finance.paid)} registrados. Al pasar a "Solo ceremonia" no tendrá menú, pero los pagos se conservan para que puedan revisarlos. ¿Continuar?`
+      )) return;
+    } else if (dataToSave.menu === 'no_aplica') {
+      dataToSave.menu = 'adulto';
     }
 
-    onUpdate(guest.id, dataToSave);
+    onUpdate(guest.id, dataToSave).catch(notifyError);
     setLocalMesa(dataToSave.mesa);
     setIsEditing(false);
   };
@@ -43,8 +66,9 @@ export default function GuestRow({ guest, onUpdate, onDelete }) {
   };
 
   const handleDelete = () => {
-    if (window.confirm('¿Deseas retirar a este invitado de la lista?')) {
-      onDelete(guest.id);
+    const extra = finance.paid > 0 ? `\nTiene ${formatARS(finance.paid)} en pagos registrados que también se eliminarán.` : '';
+    if (window.confirm(`¿Deseas retirar a ${guest.name} de la lista?${extra}`)) {
+      onDelete(guest.id).catch(notifyError);
     }
   };
 
@@ -56,15 +80,18 @@ export default function GuestRow({ guest, onUpdate, onDelete }) {
     const finalMesa = localMesa.trim() || 'Sin asignar';
     setLocalMesa(finalMesa);
     if (finalMesa !== (guest.mesa || 'Sin asignar')) {
-      onUpdate(guest.id, { mesa: finalMesa });
+      onUpdate(guest.id, { mesa: finalMesa }).catch(() => {
+        setLocalMesa(remoteMesa);
+        notifyError();
+      });
     }
   };
 
-  const getMenuLabel = (menuValue) => {
-    if (menuValue === 'adulto') return `Adulto ($${MENU_PRICES.adulto.toLocaleString('es-AR')})`;
-    if (menuValue === 'celiaco') return `Adulto Celíaco ($${MENU_PRICES.celiaco.toLocaleString('es-AR')})`;
-    if (menuValue === 'kids') return `Infantil ($${MENU_PRICES.kids.toLocaleString('es-AR')})`;
-    return '-';
+  const getMenuLabel = () => {
+    if (finance.needsMenuReview) return 'Revisar menú';
+    if (guest.menu === 'celiaco') return 'Adulto Celíaco';
+    if (finance.category === 'kids') return 'Kids';
+    return 'Adulto';
   };
 
   const getGroupBadgeStyle = (grupo) => {
@@ -87,63 +114,48 @@ export default function GuestRow({ guest, onUpdate, onDelete }) {
 
   if (isEditing) {
     return (
-      <tr>
-        <td>
-          <input type="text" name="name" value={editData.name} onChange={handleEditChange} className="inline-input" style={{marginBottom: '5px'}}/>
-          <select name="grupo" value={editData.grupo} onChange={handleEditChange} className="inline-select">
+      <tr className="guest-row is-editing">
+        <td data-label="Nombre y Grupo">
+          <input type="text" name="name" value={editData.name} onChange={handleEditChange} className="inline-input" style={{marginBottom: '5px'}} aria-label="Nombre"/>
+          <select name="grupo" value={editData.grupo} onChange={handleEditChange} className="inline-select" aria-label="Grupo">
             <option value="Familia">Familia</option>
             <option value="Amigos">Amigos</option>
             <option value="Trabajo">Trabajo</option>
             <option value="Otros">Otros</option>
           </select>
         </td>
-        <td>
-          <select name="attendance" value={editData.attendance} onChange={handleEditChange} className="inline-select">
+        <td data-label="Presencia">
+          <select name="attendance" value={editData.attendance} onChange={handleEditChange} className="inline-select" aria-label="Presencia">
             <option value="fiesta">Ceremonia + Fiesta</option>
             <option value="ceremonia">Solo Ceremonia</option>
           </select>
         </td>
-        
-        {editData.attendance === 'fiesta' ? (
-          <>
-            <td>
-              <select name="menu" value={editData.menu === 'no_aplica' ? 'adulto' : editData.menu} onChange={handleEditChange} className="inline-select">
-                <option value="adulto">Adulto</option>
-                <option value="celiaco">Adulto Celíaco</option>
-                <option value="kids">Infantil</option>
-              </select>
-            </td>
-            <td>
-              <input 
-                type="number" 
-                name="amountPaid" 
-                value={editData.amountPaid} 
-                onChange={handleEditChange} 
-                className="inline-input" 
-                placeholder="ARS" 
-                min="0"
-              />
-            </td>
-          </>
-        ) : (
-          <>
-            <td><span style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>-</span></td>
-            <td><span style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>-</span></td>
-          </>
-        )}
-
-        <td>
-          <input 
-            type="text" 
-            name="mesa" 
-            value={editData.mesa} 
-            onChange={handleEditChange} 
-            className="inline-input" 
-            placeholder="Mesa" 
+        <td data-label="Menú">
+          {editData.attendance === 'fiesta' ? (
+            <select name="menu" value={editData.menu} onChange={handleEditChange} className="inline-select" aria-label="Menú">
+              <option value="adulto">Adulto</option>
+              <option value="celiaco">Adulto Celíaco</option>
+              <option value="kids">Kids</option>
+            </select>
+          ) : (
+            <span style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>-</span>
+          )}
+        </td>
+        <td data-label="Pagos">
+          <span style={{color: 'var(--text-muted)', fontSize: '0.85rem'}}>Se registran desde "Pagos"</span>
+        </td>
+        <td data-label="Mesa">
+          <input
+            type="text"
+            name="mesa"
+            value={editData.mesa}
+            onChange={handleEditChange}
+            className="inline-input"
+            placeholder="Mesa"
+            aria-label="Mesa"
           />
         </td>
-        
-        <td>
+        <td data-label="">
           <div className="action-buttons">
             <button className="btn-action btn-save" onClick={saveEdit}>Listo</button>
             <button className="btn-action btn-delete" onClick={cancelEdit}>Volver</button>
@@ -154,44 +166,49 @@ export default function GuestRow({ guest, onUpdate, onDelete }) {
   }
 
   // Lectura mode
-  const cost = calculateCost(guest.menu, guest.attendance);
-  const paid = getAmountPaid(guest);
-  const isReady = paid >= cost && guest.attendance === 'fiesta';
   const grupo = guest.grupo || 'Otros';
+  const tone = finance.status === 'pagado' ? 'ok' : 'warn';
 
   return (
-    <tr>
-      <td>
+    <tr className="guest-row">
+      <td data-label="Nombre y Grupo">
         <div className="guest-name">{guest.name}</div>
         <div style={getGroupBadgeStyle(grupo)}>{grupo}</div>
       </td>
-      <td>
+      <td data-label="Presencia">
         <div className="status-indicator">
           <span className={`dot ${guest.attendance === 'ceremonia' ? 'gray' : 'gold'}`}></span>
           {guest.attendance === 'ceremonia' ? 'Ceremonia' : 'Completa'}
         </div>
       </td>
-      <td>
+      <td data-label="Menú">
         {guest.attendance === 'fiesta' ? (
           <div className="status-indicator">
-            {getMenuLabel(guest.menu)}
+            {getMenuLabel()}
           </div>
         ) : (
           <span style={{color: '#a1a1a1', fontSize: '0.9rem'}}>-</span>
         )}
       </td>
-      <td>
-        {guest.attendance === 'fiesta' ? (
-          <div className="status-indicator">
-            <span className={`dot ${isReady ? 'green' : 'red'}`}></span>
-            {isReady ? 'Lugar Listo' : `$${paid.toLocaleString('es-AR')} de $${cost.toLocaleString('es-AR')}`}
-          </div>
-        ) : (
-          <span style={{color: '#a1a1a1', fontSize: '0.9rem'}}>-</span>
-        )}
+      <td data-label="Pagos" className="guest-row-payments">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: '190px' }}>
+          <PaymentStatusBadge status={finance.status} />
+          {finance.price > 0 && (
+            <>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                {formatARS(finance.paid)} de {formatARS(finance.price)}
+                {finance.remaining > 0 && <> · falta {formatARS(finance.remaining)}</>}
+              </span>
+              <PaymentProgress progress={finance.progress} tone={tone} />
+            </>
+          )}
+          {finance.price === 0 && finance.paid > 0 && (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatARS(finance.paid)} registrados</span>
+          )}
+        </div>
       </td>
-      <td>
-        <input 
+      <td data-label="Mesa">
+        <input
           type="text"
           value={localMesa}
           onChange={handleLocalMesaChange}
@@ -199,10 +216,12 @@ export default function GuestRow({ guest, onUpdate, onDelete }) {
           className="inline-input"
           style={{ width: '80px', textAlign: 'center' }}
           title="Editar mesa rápidamente"
+          aria-label={`Mesa de ${guest.name}`}
         />
       </td>
-      <td>
+      <td data-label="">
         <div className="action-buttons">
+          <button className="btn-action btn-save" onClick={() => onOpenPayments(guest.id)}>Pagos</button>
           <button className="btn-action btn-edit" onClick={startEditing}>Ajustar</button>
           <button className="btn-action btn-delete" onClick={handleDelete}>Retirar</button>
         </div>

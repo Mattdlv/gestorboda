@@ -1,33 +1,24 @@
 import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { calculateCost, getAmountPaid } from '../utils/constants';
+import { computeTotals } from '../utils/finance';
+import { formatARS } from '../utils/format';
 import './Dashboard.css';
 
-export default function Dashboard({ guests }) {
-  const totalGuests = guests.length;
-  const partyGuests = guests.filter(g => g.attendance === 'fiesta').length;
-  const kidsMenu = guests.filter(g => g.menu === 'kids').length;
-  
-  let readyGuests = 0;
-  let totalCollected = 0;
+export default function Dashboard({ guests, settings, children }) {
+  const totals = computeTotals(guests, settings);
+  const totalGuests = totals.guests;
+  const partyGuests = totals.party;
+  const kidsMenu = totals.kids;
+  const totalCollected = totals.collected;
+  const paidGuests = totals.statusCount.pagado;
 
-  guests.forEach(guest => {
-    const cost = calculateCost(guest.menu, guest.attendance);
-    const paid = getAmountPaid(guest);
-    
-    totalCollected += paid;
-
-    // Está listo si pagó lo suficiente o si va solo a ceremonia (costo 0)
-    if (paid >= cost) {
-      readyGuests++;
-    }
-  });
-
+  // Lugar listo: pagó todo su menú o va solo a ceremonia (no corresponde pago)
+  const readyGuests = paidGuests + totals.statusCount.no_corresponde;
   const pendingGuests = totalGuests - readyGuests;
 
   const pieData = [
-    { name: 'Confirmados', value: readyGuests },
-    { name: 'Por Confirmar', value: pendingGuests }
+    { name: 'Lugar listo', value: readyGuests },
+    { name: 'Con saldo pendiente', value: pendingGuests }
   ];
   
   // Paleta Boho: Terracota/Bronce suave y Verde Salvia
@@ -36,11 +27,12 @@ export default function Dashboard({ guests }) {
   return (
     <div className="dashboard-wrapper">
       <div className="welcome-header">
-        <span className="subtitle-top">Gestión de Invitados (Nube)</span>
+        <span className="subtitle-top">Gestión del Casamiento</span>
         <h2>Nuestra Boda</h2>
-        <p>¡Bienvenidos! Todo marcha excelente para el gran día.<br/>
-        Diseño Premium para su tranquilidad.</p>
+        <p>¡Bienvenidos! Todo lo importante del gran día, en un solo lugar.</p>
       </div>
+
+      {children}
 
       <div className="dashboard-grid">
         <section className="therapeutic-panel">
@@ -56,27 +48,35 @@ export default function Dashboard({ guests }) {
             </div>
             
             <div className="stat-card icon-center">❀</div>
-            
+
             <div className="stat-card">
-              <div className="stat-value">{kidsMenu}</div>
-              <div className="stat-label">Niños</div>
+              <div className="stat-value">{totals.ceremony}</div>
+              <div className="stat-label">Solo<br/>Ceremonia</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{readyGuests}</div>
+              <div className="stat-value">{totals.adults}</div>
+              <div className="stat-label">Adultos<br/>(Menú)</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{kidsMenu}</div>
+              <div className="stat-label">Niños<br/>(Kids)</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{paidGuests}</div>
               <div className="stat-label">Abonados</div>
             </div>
 
             <div className="stat-card icon-center">♥</div>
 
             <div className="stat-card" style={{gridColumn: 'span 2'}}>
-               <div className="stat-value" style={{color: '#C49A76'}}>${totalCollected.toLocaleString('es-AR')}</div>
+               <div className="stat-value" style={{color: '#C49A76'}}>{formatARS(totalCollected)}</div>
                <div className="stat-label">Recaudado (ARS)</div>
             </div>
           </div>
         </section>
 
         <section className="therapeutic-panel border-gold">
-          <h3 className="panel-title">Proporción de Confirmaciones</h3>
+          <h3 className="panel-title">Estado de Pagos</h3>
           <div className="chart-container">
             {totalGuests === 0 ? (
               <p className="empty-state">
@@ -116,8 +116,8 @@ export default function Dashboard({ guests }) {
           </div>
           
           <div style={{display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1rem', zIndex: 1}}>
-             <span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}><span style={{display: 'inline-block', width: '10px', height:'10px', backgroundColor: '#8A9A86', marginRight: '5px'}}></span> Confirmado</span>
-             <span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}><span style={{display: 'inline-block', width: '10px', height:'10px', backgroundColor: '#C49A76', marginRight: '5px'}}></span> Por Confirmar</span>
+             <span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}><span style={{display: 'inline-block', width: '10px', height:'10px', backgroundColor: '#8A9A86', marginRight: '5px'}}></span> Lugar listo</span>
+             <span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}><span style={{display: 'inline-block', width: '10px', height:'10px', backgroundColor: '#C49A76', marginRight: '5px'}}></span> Con saldo pendiente</span>
           </div>
         </section>
       </div>
