@@ -8,6 +8,7 @@ import Navigation from './components/Navigation';
 import { VIEWS } from './utils/navigation';
 import PeaceOfMindPanel from './components/finance/PeaceOfMindPanel';
 import QuickActions from './components/finance/QuickActions';
+import CollectedSplit from './components/finance/CollectedSplit';
 import FinancialDashboard from './components/finance/FinancialDashboard';
 import FinancialSettings from './components/finance/FinancialSettings';
 import PaymentModal from './components/finance/PaymentModal';
@@ -114,6 +115,7 @@ function App() {
       {view === 'dashboard' && (
         <Dashboard guests={guests} settings={settings}>
           <PeaceOfMindPanel totals={totals} expenseSummary={expenseSummary} peace={peace} />
+          <CollectedSplit totals={totals} />
           <QuickActions
             onRegisterPayment={() => openPayments()}
             onAddGuest={() => { setFocusGuestForm(true); navigate('invitados'); }}

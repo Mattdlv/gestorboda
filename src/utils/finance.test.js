@@ -117,6 +117,23 @@ test('Margen asegurado y excedente', () => {
   assert.equal(over.remaining, 0);
 });
 
+test('Plata cobrada separada: catering vs nosotros', () => {
+  const t = computeTotals([
+    adult({ payments: [pay(65000)] }), // pagado: 56.300 catering + 8.700 nosotros
+    adult({ payments: [pay(30000)] }), // parcial: todo al catering
+    adult({ payments: [pay(60000)] }), // parcial: 56.300 catering + 3.700 nosotros
+    kid({ payments: [pay(45000)] }), // pagado: 36.200 catering + 8.800 nosotros
+    { attendance: 'ceremonia', menu: 'no_aplica' },
+  ], S);
+  assert.equal(t.byMenu.adulto.paid, 155000);
+  assert.equal(t.byMenu.adulto.forCatering, 142600);
+  assert.equal(t.byMenu.adulto.forUs, 12400);
+  assert.equal(t.byMenu.adulto.paidCount, 1);
+  assert.equal(t.byMenu.kids.forCatering, 36200);
+  assert.equal(t.byMenu.kids.forUs, 8800);
+  assert.equal(t.collectedForCatering + t.collectedForUs, t.collectedTowardsExpected);
+});
+
 test('Vista previa de pago', () => {
   const f = getGuestFinance(adult({ payments: [pay(30000)] }), S);
   const p = previewPayment(f, 20000);
