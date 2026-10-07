@@ -150,8 +150,8 @@ export const previewPayment = (finance, amount) => {
 export const computeTotals = (guests, settings = DEFAULT_FINANCE_SETTINGS) => {
   const s = normalizeSettings(settings);
   const byMenu = {
-    adulto: { count: 0, price: 0, cost: 0, margin: 0, paid: 0 },
-    kids: { count: 0, price: 0, cost: 0, margin: 0, paid: 0 },
+    adulto: { count: 0, price: 0, cost: 0, margin: 0, paid: 0, paidCount: 0, forCatering: 0, forUs: 0 },
+    kids: { count: 0, price: 0, cost: 0, margin: 0, paid: 0, paidCount: 0, forCatering: 0, forUs: 0 },
   };
   const totals = {
     guests: guests.length,
@@ -194,6 +194,10 @@ export const computeTotals = (guests, settings = DEFAULT_FINANCE_SETTINGS) => {
     m.cost += f.cost;
     m.margin += f.margin;
     m.paid += Math.min(f.paid, f.price);
+    if (f.status === 'pagado') m.paidCount++;
+    // La plata cobrada cubre primero el costo del catering; lo que sobra queda para nosotros
+    m.forCatering += Math.min(f.paid, f.cost);
+    m.forUs += f.securedMargin;
 
     totals.expected += f.price;
     totals.cateringCost += f.cost;
@@ -204,6 +208,8 @@ export const computeTotals = (guests, settings = DEFAULT_FINANCE_SETTINGS) => {
   }
 
   totals.menus = totals.adults + totals.kids;
+  totals.collectedForCatering = byMenu.adulto.forCatering + byMenu.kids.forCatering;
+  totals.collectedForUs = byMenu.adulto.forUs + byMenu.kids.forUs;
   totals.progress = totals.expected > 0 ? totals.collectedTowardsExpected / totals.expected : 0;
   return totals;
 };

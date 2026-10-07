@@ -1,5 +1,4 @@
 import React from 'react';
-import FinancialSummaryCard from './FinancialSummaryCard';
 import { formatARS, formatDateLong } from '../../utils/format';
 import { getExpenseCategoryLabel } from '../../utils/finance';
 
@@ -31,13 +30,6 @@ export default function PeaceOfMindPanel({ totals, expenseSummary, peace }) {
             {' '}{peace.detail}
           </p>
         </div>
-      </div>
-
-      <div className="fin-grid">
-        <FinancialSummaryCard label="Cobrado" icon="✓" tone="ok" value={formatARS(totals.collected)} hint="Pagos recibidos de invitados" />
-        <FinancialSummaryCard label="Falta cobrar" icon="◐" tone="warn" value={formatARS(totals.pending)} hint="Saldo de los menús, sin vencimiento" />
-        <FinancialSummaryCard label="Costo catering" icon="🍽" value={formatARS(totals.cateringCost)} hint={`${totals.menus} menús a precio real`} />
-        <FinancialSummaryCard label="Margen esperado" icon="↗" tone="info" value={formatARS(totals.expectedMargin)} hint="Cuando todos paguen. No es dinero disponible hoy." />
       </div>
 
       {overdue.length > 0 && (
