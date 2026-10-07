@@ -1,7 +1,7 @@
 import React from 'react';
 import GuestRow from './GuestRow';
 
-export default function GuestTable({ guests, onUpdate, onDelete }) {
+export default function GuestTable({ guests, settings, onUpdate, onDelete, onOpenPayments }) {
   if (guests.length === 0) {
     return (
       <section className="premium-panel">
@@ -15,13 +15,13 @@ export default function GuestTable({ guests, onUpdate, onDelete }) {
     <section className="premium-panel">
       <h2>Nuestra Lista</h2>
       <div className="table-container">
-        <table>
+        <table className="guest-table">
           <thead>
             <tr>
               <th>Nombre y Grupo</th>
               <th>Presencia</th>
               <th>Menú</th>
-              <th>Progreso de Pago</th>
+              <th>Pagos</th>
               <th>Mesa</th>
               <th>Ajustes</th>
             </tr>
@@ -32,7 +32,9 @@ export default function GuestTable({ guests, onUpdate, onDelete }) {
                 key={guest.id} 
                 guest={guest} 
                 onUpdate={onUpdate} 
-                onDelete={onDelete} 
+                onDelete={onDelete}
+                settings={settings}
+                onOpenPayments={onOpenPayments}
               />
             ))}
           </tbody>

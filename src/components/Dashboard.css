@@ -173,3 +173,15 @@
     transform: translateY(0);
   }
 }
+
+@media (max-width: 720px) {
+  .dashboard-wrapper { gap: 2rem; }
+  .welcome-header h2 { font-size: 2.4rem; }
+  .welcome-header p { font-size: 1rem; }
+  .dashboard-grid { gap: 2rem; }
+  .therapeutic-panel { padding: 2rem 1.25rem; }
+  .panel-title { font-size: 1.5rem; margin-bottom: 1.5rem; }
+  .stats-grid { gap: 1.25rem; }
+  .stat-value { font-size: 2.4rem; }
+  .chart-container { min-height: 260px; }
+}

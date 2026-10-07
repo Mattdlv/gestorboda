@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { MENU_PRICES } from '../utils/constants';
+import { formatARS, todayISO, newId } from '../utils/format';
 
-export default function GuestForm({ onSubmit }) {
+export default function GuestForm({ onSubmit, settings, formRef }) {
+  const prices = settings.menus;
   const [formData, setFormData] = useState({
     name: '',
     attendance: 'fiesta', 
@@ -16,15 +17,15 @@ export default function GuestForm({ onSubmit }) {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
     const finalData = { ...formData };
     
-    // Convertir el monto a número
-    finalData.amountPaid = Number(finalData.amountPaid) || 0;
-    
+    // Convertir el monto a número (nunca negativo)
+    finalData.amountPaid = Math.max(0, Number(finalData.amountPaid) || 0);
+
     // Si la mesa está vacía, la guardamos como "Sin asignar"
     if (!finalData.mesa.trim()) {
       finalData.mesa = 'Sin asignar';
@@ -35,7 +36,17 @@ export default function GuestForm({ onSubmit }) {
       finalData.amountPaid = 0;
     }
 
-    onSubmit(finalData);
+    // El monto inicial queda como primer pago del historial
+    finalData.payments = finalData.amountPaid > 0
+      ? [{ id: newId(), amount: finalData.amountPaid, date: todayISO(), method: 'transferencia', note: 'Pago inicial' }]
+      : [];
+
+    try {
+      await onSubmit(finalData);
+    } catch {
+      alert('Hubo un inconveniente al guardar el invitado. Intentá de nuevo.');
+      return;
+    }
     setFormData({ 
       name: '', 
       attendance: 'fiesta', 
@@ -47,7 +58,7 @@ export default function GuestForm({ onSubmit }) {
   };
 
   return (
-    <section className="premium-panel">
+    <section className="premium-panel" ref={formRef}>
       <h2>Sumar a la Celebración</h2>
       <form onSubmit={handleSubmit}>
         <div className="form-grid">
@@ -99,21 +110,22 @@ export default function GuestForm({ onSubmit }) {
               <div className="input-group">
                 <label htmlFor="menuSelect">Menú</label>
                 <select id="menuSelect" name="menu" value={formData.menu} onChange={handleInputChange}>
-                  <option value="adulto">Adulto (${MENU_PRICES.adulto.toLocaleString('es-AR')})</option>
-                  <option value="celiaco">Adulto Celíaco (${MENU_PRICES.celiaco.toLocaleString('es-AR')})</option>
-                  <option value="kids">Infantil (${MENU_PRICES.kids.toLocaleString('es-AR')})</option>
+                  <option value="adulto">Adulto ({formatARS(prices.adulto.price)})</option>
+                  <option value="celiaco">Adulto Celíaco ({formatARS(prices.adulto.price)})</option>
+                  <option value="kids">Kids ({formatARS(prices.kids.price)})</option>
                 </select>
               </div>
 
               <div className="input-group">
-                <label htmlFor="amountPaidInput">Transferido (ARS)</label>
-                <input 
+                <label htmlFor="amountPaidInput">Pago inicial (opcional)</label>
+                <input
                   id="amountPaidInput"
-                  type="number" 
+                  type="number"
+                  inputMode="numeric"
                   name="amountPaid"
                   value={formData.amountPaid}
                   onChange={handleInputChange}
-                  placeholder={`Ej. ${MENU_PRICES.adulto / 2}`}
+                  placeholder="Ej. 30000"
                   min="0"
                 />
               </div>
